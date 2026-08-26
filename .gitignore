@@ -17,3 +17,4 @@ __pycache__/
 # Editor
 .vscode/
 *.swp
+*.local.md

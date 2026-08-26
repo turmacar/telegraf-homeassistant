@@ -117,7 +117,7 @@ for (const item of items) {
         if (isCpuTemp && fields.temp_input != null) pub('cpu_temp', parseFloat(fields.temp_input.toFixed(1)));
     }
     else if (measurement === 'temp') {
-        // Raspberry Pi thermal via [[inputs.temp]] — thermal_zone0
+        // Raspberry Pi thermal via [[inputs.temp]] - thermal_zone0
         const tag_sensor = (tags.sensor || '').toLowerCase();
         if ((tag_sensor === '' || tag_sensor.includes('thermal_zone0') || tag_sensor.includes('cpu')) && fields.temp != null) {
             pub('cpu_temp', parseFloat(fields.temp.toFixed(1)));

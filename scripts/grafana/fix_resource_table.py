@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Patch Grafana's unified storage (resource table) to update the $server variable regex.
-Run from Desktop-STRIX — requires SSH access to Tower.
+Run from Desktop-STRIX - requires SSH access to Tower.
 
 Usage:
     python3 fix_resource_table.py
