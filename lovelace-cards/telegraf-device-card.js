@@ -21,8 +21,9 @@ class TelegrafDeviceCard extends HTMLElement {
     this._built = false;
     this._SUFFIXES = [
       "cpu_usage", "ram_usage", "root_disk_usage",
-      "cpu_temperature", "gpu_temperature", "gpu_usage", "gpu_vram_used",
+      "cpu_temperature", "gpu_temperature", "gpu_usage", "gpu_vram_used", "gpu_model",
       "battery", "uptime", "docker_containers",
+      ...[0, 1, 2, 3].flatMap(i => [`gpu_${i}_usage`, `gpu_${i}_temperature`, `gpu_${i}_vram_used`, `gpu_${i}_model`]),
     ];
   }
 
@@ -106,6 +107,36 @@ class TelegrafDeviceCard extends HTMLElement {
       : { max: 100, severity: { green: 0, yellow: 70,  red: 85 } };
   }
 
+  // Hosts with a single GPU publish gpu_usage/gpu_temperature/gpu_vram_used.
+  // Hosts with multiple GPUs publish indexed gpu{N}_usage/gpu{N}_temp/gpu{N}_vram_used instead.
+  // Returns one { label, defs } row per GPU found, label includes the GPU model if published.
+  _gpuRows() {
+    const vramMax = (i) => Array.isArray(this._config.vram_max) ? (this._config.vram_max[i] ?? 8192) : (this._config.vram_max ?? 8192);
+    const indexed = [];
+    for (let i = 0; i < 4; i++) {
+      const usage = `gpu_${i}_usage`, temp = `gpu_${i}_temperature`, vram = `gpu_${i}_vram_used`;
+      if (!this._st(usage) && !this._st(temp) && !this._st(vram)) continue;
+      const model = this._st(`gpu_${i}_model`)?.state;
+      indexed.push({
+        label: model ? `GPU ${i} · ${model}` : `GPU ${i}`,
+        defs: [
+          { suffix: usage, name: "Usage", severity: { green: 0, yellow: 60, red: 80 } },
+          { suffix: temp,  name: "Temp",  ...this._tempThresholds(temp) },
+          { suffix: vram,  name: "VRAM",  severity: { green: 0, yellow: 6144, red: 7168 }, max: vramMax(i) },
+        ].filter(d => this._st(d.suffix)),
+      });
+    }
+    if (indexed.length > 0) return indexed;
+
+    const legacyDefs = [
+      { suffix: "gpu_usage",       name: "GPU",      severity: { green: 0, yellow: 60, red: 80 } },
+      { suffix: "gpu_temperature", name: "GPU Temp", ...this._tempThresholds("gpu_temperature") },
+      { suffix: "gpu_vram_used",   name: "VRAM",     severity: { green: 0, yellow: 6144, red: 7168 }, max: vramMax(0) },
+    ].filter(d => this._st(d.suffix));
+    if (legacyDefs.length === 0) return [];
+    return [{ label: this._st("gpu_model")?.state ?? null, defs: legacyDefs }];
+  }
+
   // -- Build ----------------------------------------------------------------
 
   async _render() {
@@ -147,11 +178,7 @@ class TelegrafDeviceCard extends HTMLElement {
       { suffix: "battery",         name: "Battery",  severity: { red: 0,   yellow: 15, green: 30 } },
     ].filter(d => this._st(d.suffix));
 
-    const gpuDefs = [
-      { suffix: "gpu_usage",       name: "GPU",      severity: { green: 0, yellow: 60, red: 80 } },
-      { suffix: "gpu_temperature", name: "GPU Temp", ...this._tempThresholds("gpu_temperature") },
-      { suffix: "gpu_vram_used",   name: "VRAM",     severity: { green: 0, yellow: 6144, red: 7168 }, max: this._config.vram_max ?? 8192 },
-    ].filter(d => this._st(d.suffix));
+    const gpuRows = this._gpuRows();
 
     const uptimeSec = this._uptimeSeconds();
     const docker    = this._num("docker_containers");
@@ -203,6 +230,7 @@ class TelegrafDeviceCard extends HTMLElement {
         .stat ha-icon { --mdc-icon-size: 16px; color: var(--state-icon-color, #44739e); }
         .stat-lbl { font-size: 0.7em;  color: var(--secondary-text-color); }
         .stat-val { font-size: 0.88em; font-weight: 500; color: var(--primary-text-color); }
+        .gpu-label { font-size: 0.78em; font-weight: 500; color: var(--secondary-text-color); margin-bottom: 2px; }
       </style>
       <ha-card>
         <div class="header">
@@ -210,7 +238,7 @@ class TelegrafDeviceCard extends HTMLElement {
           <span>${title}</span>
         </div>
         <div class="gauge-row primary"></div>
-        ${gpuDefs.length > 0       ? '<hr class="divider"><div class="gauge-row gpu"></div>'       : ""}
+        ${gpuRows.map((row, i) => `<hr class="divider">${row.label ? `<div class="gpu-label">${row.label}</div>` : ""}<div class="gauge-row gpu" data-gpu="${i}"></div>`).join("")}
         ${secondaryDefs.length > 0 ? '<hr class="divider"><div class="gauge-row secondary"></div>' : ""}
         ${hasStats               ? '<hr class="divider"><div class="stats"></div>'              : ""}
       </ha-card>`;
@@ -223,15 +251,15 @@ class TelegrafDeviceCard extends HTMLElement {
       primaryRow.appendChild(cell);
     }
 
-    if (gpuDefs.length > 0) {
-      const gpuRow = this.shadowRoot.querySelector(".gauge-row.gpu");
-      for (const def of gpuDefs) {
+    gpuRows.forEach((row, i) => {
+      const gpuRow = this.shadowRoot.querySelector(`.gauge-row.gpu[data-gpu="${i}"]`);
+      for (const def of row.defs) {
         const cell = document.createElement("div");
         cell.className = "gauge-cell";
         cell.appendChild(this._gaugeCard(def.suffix, def.name, def.severity, def.max));
         gpuRow.appendChild(cell);
       }
-    }
+    });
 
     if (secondaryDefs.length > 0) {
       const secondaryRow = this.shadowRoot.querySelector(".gauge-row.secondary");
