@@ -13,9 +13,9 @@ Run and deploy:
 """
 import json
 
-def device_card(title, icon, device):
+def device_card(title, icon, device, **options):
     return {"type": "custom:telegraf-device-card", "device": device,
-            "title": title, "icon": icon}
+            "title": title, "icon": icon, **options}
 
 dashboard = {
     "views": [{
@@ -24,7 +24,7 @@ dashboard = {
         "icon": "mdi:server",
         "sections": [
             device_card("Tower (Unraid)", "mdi:server",         "tower"),
-            device_card("Desktop-STRIX",  "mdi:desktop-tower",  "desktop_strix"),
+            device_card("Desktop-STRIX",  "mdi:desktop-tower",  "desktop_strix", vram_max=8192),
             device_card("Framework 13",   "mdi:laptop",         "framework_13"),
             device_card("HA Pi",          "mdi:raspberry-pi",   "ha_pi"),
             device_card("Pi-hole",        "mdi:shield-check",   "pihole"),

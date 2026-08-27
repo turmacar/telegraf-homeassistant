@@ -8,6 +8,7 @@
  *   device: string  - entity prefix, e.g. "tower", "desktop_strix", "framework_13"
  *   title:  string  - display name (optional, defaults to device)
  *   icon:   string  - mdi icon string (optional, defaults to "mdi:server-network")
+ *   vram_max: number - maximum VRAM gauge value in MiB (optional, defaults to 8192)
  */
 class TelegrafDeviceCard extends HTMLElement {
   constructor() {
@@ -87,6 +88,24 @@ class TelegrafDeviceCard extends HTMLElement {
     return `${m}m`;
   }
 
+  // uptime entities may report in seconds, minutes, hours, or days depending on HA's unit conversion
+  _uptimeSeconds() {
+    const s = this._st("uptime");
+    if (!s) return null;
+    const val = parseFloat(s.state);
+    if (isNaN(val)) return null;
+    const perSecond = { s: 1, min: 60, m: 60, h: 3600, d: 86400 };
+    return val * (perSecond[s.attributes.unit_of_measurement] ?? 1);
+  }
+
+  // temperature entities may display in \u00b0C or \u00b0F depending on HA's unit system
+  _tempThresholds(suffix) {
+    const isF = this._st(suffix)?.attributes.unit_of_measurement === "\u00b0F";
+    return isF
+      ? { max: 215, severity: { green: 0, yellow: 158, red: 185 } }
+      : { max: 100, severity: { green: 0, yellow: 70,  red: 85 } };
+  }
+
   // -- Build ----------------------------------------------------------------
 
   async _render() {
@@ -97,14 +116,14 @@ class TelegrafDeviceCard extends HTMLElement {
     this._build();
   }
 
-  _gaugeCard(suffix, name, severity) {
+  _gaugeCard(suffix, name, severity, max = 100) {
     const card = this._helpers.createCardElement({
       type: "gauge",
       entity: this._pfx(suffix),
       name,
       needle: true,
       min: 0,
-      max: 100,
+      max,
       severity,
     });
     card.hass = this._hass;
@@ -123,17 +142,20 @@ class TelegrafDeviceCard extends HTMLElement {
     ].filter(d => this._st(d.suffix));
 
     const secondaryDefs = [
-      { suffix: "cpu_temperature", name: "CPU Temp", severity: { green: 0, yellow: 70, red: 85 } },
-      { suffix: "gpu_temperature", name: "GPU Temp", severity: { green: 0, yellow: 70, red: 85 } },
-      { suffix: "gpu_usage",       name: "GPU %",    severity: { green: 0, yellow: 60, red: 80 } },
+      { suffix: "cpu_temperature", name: "CPU Temp", ...this._tempThresholds("cpu_temperature") },
       // Battery: inverted - low value is bad
       { suffix: "battery",         name: "Battery",  severity: { red: 0,   yellow: 15, green: 30 } },
     ].filter(d => this._st(d.suffix));
 
-    const uptimeSec = this._num("uptime");
+    const gpuDefs = [
+      { suffix: "gpu_usage",       name: "GPU",      severity: { green: 0, yellow: 60, red: 80 } },
+      { suffix: "gpu_temperature", name: "GPU Temp", ...this._tempThresholds("gpu_temperature") },
+      { suffix: "gpu_vram_used",   name: "VRAM",     severity: { green: 0, yellow: 6144, red: 7168 }, max: this._config.vram_max ?? 8192 },
+    ].filter(d => this._st(d.suffix));
+
+    const uptimeSec = this._uptimeSeconds();
     const docker    = this._num("docker_containers");
-    const vramSt    = this._st("gpu_vram_used");
-    const hasStats  = uptimeSec !== null || docker !== null || vramSt !== null;
+    const hasStats  = uptimeSec !== null || docker !== null;
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -188,6 +210,7 @@ class TelegrafDeviceCard extends HTMLElement {
           <span>${title}</span>
         </div>
         <div class="gauge-row primary"></div>
+        ${gpuDefs.length > 0       ? '<hr class="divider"><div class="gauge-row gpu"></div>'       : ""}
         ${secondaryDefs.length > 0 ? '<hr class="divider"><div class="gauge-row secondary"></div>' : ""}
         ${hasStats               ? '<hr class="divider"><div class="stats"></div>'              : ""}
       </ha-card>`;
@@ -200,12 +223,22 @@ class TelegrafDeviceCard extends HTMLElement {
       primaryRow.appendChild(cell);
     }
 
+    if (gpuDefs.length > 0) {
+      const gpuRow = this.shadowRoot.querySelector(".gauge-row.gpu");
+      for (const def of gpuDefs) {
+        const cell = document.createElement("div");
+        cell.className = "gauge-cell";
+        cell.appendChild(this._gaugeCard(def.suffix, def.name, def.severity, def.max));
+        gpuRow.appendChild(cell);
+      }
+    }
+
     if (secondaryDefs.length > 0) {
       const secondaryRow = this.shadowRoot.querySelector(".gauge-row.secondary");
       for (const def of secondaryDefs) {
         const cell = document.createElement("div");
         cell.className = "gauge-cell";
-        cell.appendChild(this._gaugeCard(def.suffix, def.name, def.severity));
+        cell.appendChild(this._gaugeCard(def.suffix, def.name, def.severity, def.max));
         secondaryRow.appendChild(cell);
       }
     }
@@ -217,9 +250,8 @@ class TelegrafDeviceCard extends HTMLElement {
     const statsDiv = this.shadowRoot.querySelector(".stats");
     if (!statsDiv) return;
 
-    const uptimeSec = this._num("uptime");
+    const uptimeSec = this._uptimeSeconds();
     const docker    = this._num("docker_containers");
-    const vramSt    = this._st("gpu_vram_used");
 
     const stat = (icon, label, value) =>
       `<div class="stat">
@@ -231,8 +263,6 @@ class TelegrafDeviceCard extends HTMLElement {
     statsDiv.innerHTML = [
       uptimeSec !== null ? stat("mdi:timer-outline", "Uptime",     this._formatUptime(uptimeSec)) : "",
       docker    !== null ? stat("mdi:docker",        "Containers", Math.round(docker))             : "",
-      vramSt    !== null ? stat("mdi:memory",        "VRAM",
-        `${Math.round(parseFloat(vramSt.state))} ${vramSt.attributes.unit_of_measurement ?? "MiB"}`) : "",
     ].filter(Boolean).join("");
   }
 

@@ -13,6 +13,7 @@ __pycache__/
 # Uncomment if you want to exclude generated files from git:
 # nodered/flows.json
 # ha-dashboard/lovelace.dashboard_raspberrypi.json
+Screenshot*
 
 # Editor
 .vscode/
