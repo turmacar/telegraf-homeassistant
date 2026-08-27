@@ -139,10 +139,10 @@ class TelegrafDeviceCard extends HTMLElement {
       { suffix: "cpu_usage",       name: "CPU",      severity: { green: 0, yellow: 70, red: 90 } },
       { suffix: "ram_usage",       name: "RAM",      severity: { green: 0, yellow: 75, red: 90 } },
       { suffix: "root_disk_usage", name: "Disk",     severity: { green: 0, yellow: 75, red: 90 } },
+      { suffix: "cpu_temperature", name: "CPU Temp", ...this._tempThresholds("cpu_temperature") },
     ].filter(d => this._st(d.suffix));
 
     const secondaryDefs = [
-      { suffix: "cpu_temperature", name: "CPU Temp", ...this._tempThresholds("cpu_temperature") },
       // Battery: inverted - low value is bad
       { suffix: "battery",         name: "Battery",  severity: { red: 0,   yellow: 15, green: 30 } },
     ].filter(d => this._st(d.suffix));
@@ -219,7 +219,7 @@ class TelegrafDeviceCard extends HTMLElement {
     for (const def of primaryDefs) {
       const cell = document.createElement("div");
       cell.className = "gauge-cell";
-      cell.appendChild(this._gaugeCard(def.suffix, def.name, def.severity));
+      cell.appendChild(this._gaugeCard(def.suffix, def.name, def.severity, def.max));
       primaryRow.appendChild(cell);
     }
 
