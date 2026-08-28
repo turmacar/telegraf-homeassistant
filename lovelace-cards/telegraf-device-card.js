@@ -9,6 +9,12 @@
  *   title:  string  - display name (optional, defaults to device)
  *   icon:   string  - mdi icon string (optional, defaults to "mdi:server-network")
  *   vram_max: number - maximum VRAM gauge value in MiB (optional, defaults to 8192)
+ *   cpu_throttle_c: number - CPU's documented thermal-throttle temp in \u00b0C (optional).
+ *     Red zone starts here, yellow starts 15\u00b0C below. Falls back to a generic 85\u00b0C
+ *     red zone if omitted. Always specified in Celsius; converted to \u00b0F automatically
+ *     to match the entity's unit (driven by HA's unit system setting).
+ *   gpu_throttle_c: number | number[] - same as cpu_throttle_c but for GPU temp gauges.
+ *     Use an array to give each GPU (by index) its own throttle temp on multi-GPU hosts.
  */
 class TelegrafDeviceCard extends HTMLElement {
   constructor() {
@@ -23,6 +29,7 @@ class TelegrafDeviceCard extends HTMLElement {
       "cpu_usage", "ram_usage", "root_disk_usage",
       "cpu_temperature", "gpu_temperature", "gpu_usage", "gpu_vram_used", "gpu_model",
       "battery", "uptime", "docker_containers",
+      "wan_rx_mbps", "wan_tx_mbps", "dns_latency",
       ...[0, 1, 2, 3].flatMap(i => [`gpu_${i}_usage`, `gpu_${i}_temperature`, `gpu_${i}_vram_used`, `gpu_${i}_model`]),
     ];
   }
@@ -99,19 +106,32 @@ class TelegrafDeviceCard extends HTMLElement {
     return val * (perSecond[s.attributes.unit_of_measurement] ?? 1);
   }
 
-  // temperature entities may display in \u00b0C or \u00b0F depending on HA's unit system
-  _tempThresholds(suffix) {
+  // temperature entities may display in \u00b0C or \u00b0F depending on HA's unit system.
+  // throttleC is the chip's documented thermal-throttle temperature in Celsius; red zone
+  // starts there, yellow starts 15\u00b0C below it. Falls back to a generic 85\u00b0C red zone
+  // when the card isn't configured with a throttle temp for this device/chip.
+  _tempThresholds(suffix, throttleC = null) {
     const isF = this._st(suffix)?.attributes.unit_of_measurement === "\u00b0F";
+    if (throttleC == null) {
+      return isF
+        ? { max: 215, severity: { green: 0, yellow: 158, red: 185 } }
+        : { max: 100, severity: { green: 0, yellow: 70,  red: 85 } };
+    }
+    const redC    = throttleC;
+    const yellowC = throttleC - 15;
+    const maxC    = Math.ceil((throttleC + 10) / 5) * 5;
+    const toF = (c) => Math.round(c * 9 / 5 + 32);
     return isF
-      ? { max: 215, severity: { green: 0, yellow: 158, red: 185 } }
-      : { max: 100, severity: { green: 0, yellow: 70,  red: 85 } };
+      ? { max: toF(maxC), severity: { green: 0, yellow: toF(yellowC), red: toF(redC) } }
+      : { max: maxC,      severity: { green: 0, yellow: yellowC,      red: redC } };
   }
 
   // Hosts with a single GPU publish gpu_usage/gpu_temperature/gpu_vram_used.
   // Hosts with multiple GPUs publish indexed gpu{N}_usage/gpu{N}_temp/gpu{N}_vram_used instead.
   // Returns one { label, defs } row per GPU found, label includes the GPU model if published.
   _gpuRows() {
-    const vramMax = (i) => Array.isArray(this._config.vram_max) ? (this._config.vram_max[i] ?? 8192) : (this._config.vram_max ?? 8192);
+    const vramMax    = (i) => Array.isArray(this._config.vram_max)       ? (this._config.vram_max[i]       ?? 8192) : (this._config.vram_max       ?? 8192);
+    const gpuThrottle = (i) => Array.isArray(this._config.gpu_throttle_c) ? (this._config.gpu_throttle_c[i] ?? null) : (this._config.gpu_throttle_c ?? null);
     const indexed = [];
     for (let i = 0; i < 4; i++) {
       const usage = `gpu_${i}_usage`, temp = `gpu_${i}_temperature`, vram = `gpu_${i}_vram_used`;
@@ -121,7 +141,7 @@ class TelegrafDeviceCard extends HTMLElement {
         label: model ? `GPU ${i} · ${model}` : `GPU ${i}`,
         defs: [
           { suffix: usage, name: "Usage", severity: { green: 0, yellow: 60, red: 80 } },
-          { suffix: temp,  name: "Temp",  ...this._tempThresholds(temp) },
+          { suffix: temp,  name: "Temp",  ...this._tempThresholds(temp, gpuThrottle(i)) },
           { suffix: vram,  name: "VRAM",  severity: { green: 0, yellow: 6144, red: 7168 }, max: vramMax(i) },
         ].filter(d => this._st(d.suffix)),
       });
@@ -130,7 +150,7 @@ class TelegrafDeviceCard extends HTMLElement {
 
     const legacyDefs = [
       { suffix: "gpu_usage",       name: "GPU",      severity: { green: 0, yellow: 60, red: 80 } },
-      { suffix: "gpu_temperature", name: "GPU Temp", ...this._tempThresholds("gpu_temperature") },
+      { suffix: "gpu_temperature", name: "GPU Temp", ...this._tempThresholds("gpu_temperature", gpuThrottle(0)) },
       { suffix: "gpu_vram_used",   name: "VRAM",     severity: { green: 0, yellow: 6144, red: 7168 }, max: vramMax(0) },
     ].filter(d => this._st(d.suffix));
     if (legacyDefs.length === 0) return [];
@@ -170,7 +190,7 @@ class TelegrafDeviceCard extends HTMLElement {
       { suffix: "cpu_usage",       name: "CPU",      severity: { green: 0, yellow: 70, red: 90 } },
       { suffix: "ram_usage",       name: "RAM",      severity: { green: 0, yellow: 75, red: 90 } },
       { suffix: "root_disk_usage", name: "Disk",     severity: { green: 0, yellow: 75, red: 90 } },
-      { suffix: "cpu_temperature", name: "CPU Temp", ...this._tempThresholds("cpu_temperature") },
+      { suffix: "cpu_temperature", name: "CPU Temp", ...this._tempThresholds("cpu_temperature", this._config.cpu_throttle_c) },
     ].filter(d => this._st(d.suffix));
 
     const secondaryDefs = [
@@ -182,7 +202,8 @@ class TelegrafDeviceCard extends HTMLElement {
 
     const uptimeSec = this._uptimeSeconds();
     const docker    = this._num("docker_containers");
-    const hasStats  = uptimeSec !== null || docker !== null;
+    const hasStats  = uptimeSec !== null || docker !== null ||
+      this._num("wan_rx_mbps") !== null || this._num("wan_tx_mbps") !== null || this._num("dns_latency") !== null;
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -280,6 +301,9 @@ class TelegrafDeviceCard extends HTMLElement {
 
     const uptimeSec = this._uptimeSeconds();
     const docker    = this._num("docker_containers");
+    const wanRx     = this._num("wan_rx_mbps");
+    const wanTx     = this._num("wan_tx_mbps");
+    const dnsMs     = this._num("dns_latency");
 
     const stat = (icon, label, value) =>
       `<div class="stat">
@@ -289,8 +313,11 @@ class TelegrafDeviceCard extends HTMLElement {
       </div>`;
 
     statsDiv.innerHTML = [
-      uptimeSec !== null ? stat("mdi:timer-outline", "Uptime",     this._formatUptime(uptimeSec)) : "",
-      docker    !== null ? stat("mdi:docker",        "Containers", Math.round(docker))             : "",
+      uptimeSec !== null ? stat("mdi:timer-outline",     "Uptime",     this._formatUptime(uptimeSec)) : "",
+      docker    !== null ? stat("mdi:docker",            "Containers", Math.round(docker))             : "",
+      wanRx     !== null ? stat("mdi:download-network",  "Download",   `${wanRx.toFixed(1)} Mb/s`)      : "",
+      wanTx     !== null ? stat("mdi:upload-network",    "Upload",     `${wanTx.toFixed(1)} Mb/s`)      : "",
+      dnsMs     !== null ? stat("mdi:dns",                "DNS",        `${Math.round(dnsMs)} ms`)       : "",
     ].filter(Boolean).join("");
   }
 

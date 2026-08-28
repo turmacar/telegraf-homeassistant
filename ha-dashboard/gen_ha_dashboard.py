@@ -23,12 +23,13 @@ dashboard = {
         "path": "hardware",
         "icon": "mdi:server",
         "sections": [
-            device_card("Tower (Unraid)", "mdi:server",         "tower"),
-            device_card("Desktop-STRIX",  "mdi:desktop-tower",  "desktop_strix", vram_max=8192),
-            device_card("Framework 13",   "mdi:laptop",         "framework_13"),
-            device_card("HA Pi",          "mdi:raspberry-pi",   "ha_pi"),
-            device_card("Pi-hole",        "mdi:shield-check",   "pihole"),
-            device_card("Router",         "mdi:router-network", "openwrt"),
+            # gpu_throttle_c order matches gpus:2 index order in gen_nodered_flow.py (gpu0=1050 Ti, gpu1=1070)
+            device_card("Tower (Unraid)", "mdi:server",         "tower",         cpu_throttle_c=95, gpu_throttle_c=[97, 94]),
+            device_card("Desktop-STRIX",  "mdi:desktop-tower",  "desktop_strix", vram_max=8192, cpu_throttle_c=95, gpu_throttle_c=93),
+            device_card("Framework 13",   "mdi:laptop",         "framework_13",  cpu_throttle_c=100),
+            device_card("HA Pi",          "mdi:raspberry-pi",   "ha_pi",         cpu_throttle_c=80),
+            device_card("Pi-hole",        "mdi:shield-check",   "pihole",        cpu_throttle_c=80),
+            device_card("Router",         "mdi:router-network", "openwrt",       cpu_throttle_c=105),
         ],
         "badges": [],
         "header": {"layout": "responsive", "badges_position": "bottom", "badges_wrap": "wrap"}

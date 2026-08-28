@@ -10,16 +10,36 @@ Usage:
 Grafana 11+ stores dashboards in the `resource` table (Kubernetes-style JSON),
 not the legacy `dashboard` table. All programmatic edits must target resource.value.
 """
-import json, subprocess, sys, argparse
+import json, subprocess, sys, argparse, os
 
 DB = '/mnt/user/appdata/grafana/grafana.db'
 DASHBOARD_NAME = '000000127'
-TOWER = 'root@${INFLUXDB_HOST}'
+ENV_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '.env')
+
+
+def load_env_var(name):
+    """Read a var from the real environment, falling back to the repo's gitignored .env."""
+    if name in os.environ:
+        return os.environ[name]
+    if os.path.exists(ENV_PATH):
+        for line in open(ENV_PATH):
+            line = line.strip()
+            if line.startswith(f'{name}='):
+                return line.split('=', 1)[1].split('#')[0].strip()
+    return None
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--hosts', default='Tower,Desktop-STRIX,Framework_13,ha-pi,pihole,openwrt',
                     help='Pipe-separated list of hostnames for $server regex')
+parser.add_argument('--tower', default=None,
+                    help='root@<ip> for Tower; defaults to INFLUXDB_HOST from env/.env')
 args = parser.parse_args()
+
+tower_host = args.tower or load_env_var('INFLUXDB_HOST')
+if not tower_host:
+    sys.exit('Set INFLUXDB_HOST in .env, export it, or pass --tower root@<ip>')
+TOWER = tower_host if '@' in tower_host else f'root@{tower_host}'
 
 hosts = '|'.join(args.hosts.split(','))
 new_regex = f'/^({hosts})$/'
