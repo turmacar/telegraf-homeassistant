@@ -9,12 +9,15 @@ Monitoring stack for home network: Telegraf → InfluxDB/MQTT → Grafana + Home
   telegraf ──► InfluxDB (Tower:8086)     ◄── Grafana (Tower:13000)
            ──► Mosquitto (ha-pi:1883)
                     │
-               Node-RED (ha-pi:1880)
-                    │
-               HA MQTT Discovery
+         telegraf_bridge (HA custom integration,
+         sibling repo telegraf-homeassistant-bridge)
                     │
             Home Assistant entities
 ```
+
+Node-RED previously sat here (MQTT→HA Discovery transform); retired
+2026-08-28 and its `nodered/` flow removed from this repo, replaced by the
+`telegraf_bridge` custom integration.
 
 ## Monitored Hosts
 
@@ -48,11 +51,11 @@ Or substitute directly in the config files (do not commit real credentials).
 - Mosquitto at `${MQTT_HOST}:1883`, `allow_anonymous false`
 - Add telegraf user: `docker exec mosquitto mosquitto_passwd /mosquitto/config/pwfile telegraf`
 
-### Node-RED (HA Pi)
-- Running at `http://${MQTT_HOST}:1880` in Docker, `ha_net` network
-- Data: `/home/turmacar/HomeAssistant/nodered/`
-- Deploy: `scp nodered/flows.json turmacar@${HA_HOST}:/home/turmacar/HomeAssistant/nodered/flows.json && ssh turmacar@${HA_HOST} "docker restart nodered"`
-- After deploy, open Node-RED UI and set MQTT broker password (stored separately in Node-RED credentials)
+### Node-RED (HA Pi) - decommissioned 2026-08-28
+- Previously ran at `http://${MQTT_HOST}:1880`, doing the MQTT→HA Discovery
+  transform. Replaced by the `telegraf_bridge` custom integration (sibling
+  repo `telegraf-homeassistant-bridge`). `nodered/flows.json` removed from
+  this repo; see `archive/TODO_ha-integration.local.md` for migration history.
 
 ### Grafana (Tower)
 - v13.x at `http://${INFLUXDB_HOST}:13000`
@@ -63,7 +66,7 @@ Or substitute directly in the config files (do not commit real credentials).
 
 1. Copy an existing `telegraf/*.conf`, change `hostname` and inputs for the device type
 2. Deploy the config to the new host: `cat telegraf/newhostname.conf | ssh user@host "cat > /etc/telegraf/telegraf.conf"`
-3. Add the hostname to `hosts[]` in `scripts/gen_nodered_flow.py` and redeploy Node-RED flow
+3. Add the host to the HA-side `telegraf_bridge` integration (auto-discovers `systems/#` topics, no per-host list to maintain)
 4. Add a `device_card()` entry to `ha-dashboard/gen_ha_dashboard.py` and redeploy dashboard
    - No per-host entity list needed - `telegraf-device-card` auto-discovers which entities exist
 5. Update Grafana $server regex: `python3 scripts/grafana/fix_resource_table.py --hosts "Tower,...,newhostname"`
@@ -131,7 +134,7 @@ icon: mdi:server
 - `data_format = "json"` sends structured JSON with `fields`, `tags`, `name`, `timestamp` keys
 - Topic format: `systems/{Hostname}/{measurement}` e.g. `systems/Tower/cpu`
 
-## Node-RED Transform Function Notes
+## Node-RED Transform Function Notes (historical - Node-RED decommissioned)
 - `system` measurement sends **multiple** MQTT messages (separate for load1/load5 vs uptime vs uptime_format)
 - Always guard with `!== undefined` before publishing to avoid overwriting correct values with 0
 - `[[inputs.sensors]]` tag values are **lowercase** in line protocol: `feature=tctl` not `Tctl`

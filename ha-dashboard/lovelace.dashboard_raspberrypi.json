@@ -11,384 +11,52 @@
           "icon": "mdi:server",
           "sections": [
             {
-              "type": "grid",
-              "cards": [
-                {
-                  "type": "markdown",
-                  "content": "## \ud83d\uddc4\ufe0f Tower (Unraid)"
-                },
-                {
-                  "type": "horizontal-stack",
-                  "cards": [
-                    {
-                      "type": "gauge",
-                      "entity": "sensor.tower_cpu_usage",
-                      "name": "CPU",
-                      "min": 0,
-                      "max": 100,
-                      "needle": true,
-                      "severity": {
-                        "green": 0,
-                        "yellow": 70,
-                        "red": 90
-                      }
-                    },
-                    {
-                      "type": "gauge",
-                      "entity": "sensor.tower_ram_usage",
-                      "name": "RAM",
-                      "min": 0,
-                      "max": 100,
-                      "needle": true,
-                      "severity": {
-                        "green": 0,
-                        "yellow": 75,
-                        "red": 90
-                      }
-                    },
-                    {
-                      "type": "gauge",
-                      "entity": "sensor.tower_root_disk_usage",
-                      "name": "Disk",
-                      "min": 0,
-                      "max": 100,
-                      "needle": true,
-                      "severity": {
-                        "green": 0,
-                        "yellow": 75,
-                        "red": 90
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "glance",
-                  "show_name": true,
-                  "show_icon": true,
-                  "show_state": true,
-                  "entities": [
-                    {
-                      "entity": "sensor.tower_uptime",
-                      "name": "Uptime",
-                      "icon": "mdi:timer-outline"
-                    },
-                    {
-                      "entity": "sensor.tower_docker_containers",
-                      "name": "Containers",
-                      "icon": "mdi:docker"
-                    }
-                  ]
-                }
+              "type": "custom:telegraf-device-card",
+              "device": "tower",
+              "title": "Tower (Unraid)",
+              "icon": "mdi:server",
+              "cpu_throttle_c": 95,
+              "gpu_throttle_c": [
+                97,
+                94
               ]
             },
             {
-              "type": "grid",
-              "cards": [
-                {
-                  "type": "markdown",
-                  "content": "## \ud83d\udda5\ufe0f Desktop-STRIX"
-                },
-                {
-                  "type": "horizontal-stack",
-                  "cards": [
-                    {
-                      "type": "gauge",
-                      "entity": "sensor.desktop_strix_cpu_usage",
-                      "name": "CPU",
-                      "min": 0,
-                      "max": 100,
-                      "needle": true,
-                      "severity": {
-                        "green": 0,
-                        "yellow": 70,
-                        "red": 90
-                      }
-                    },
-                    {
-                      "type": "gauge",
-                      "entity": "sensor.desktop_strix_ram_usage",
-                      "name": "RAM",
-                      "min": 0,
-                      "max": 100,
-                      "needle": true,
-                      "severity": {
-                        "green": 0,
-                        "yellow": 75,
-                        "red": 90
-                      }
-                    },
-                    {
-                      "type": "gauge",
-                      "entity": "sensor.desktop_strix_root_disk_usage",
-                      "name": "Disk",
-                      "min": 0,
-                      "max": 100,
-                      "needle": true,
-                      "severity": {
-                        "green": 0,
-                        "yellow": 75,
-                        "red": 90
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "glance",
-                  "show_name": true,
-                  "show_icon": true,
-                  "show_state": true,
-                  "entities": [
-                    {
-                      "entity": "sensor.desktop_strix_uptime",
-                      "name": "Uptime",
-                      "icon": "mdi:timer-outline"
-                    },
-                    {
-                      "entity": "sensor.desktop_strix_docker_containers",
-                      "name": "Containers",
-                      "icon": "mdi:docker"
-                    },
-                    {
-                      "entity": "sensor.desktop_strix_cpu_temperature",
-                      "name": "CPU Temp",
-                      "icon": "mdi:thermometer"
-                    },
-                    {
-                      "entity": "sensor.desktop_strix_gpu_temperature",
-                      "name": "GPU Temp",
-                      "icon": "mdi:thermometer"
-                    },
-                    {
-                      "entity": "sensor.desktop_strix_gpu_usage",
-                      "name": "GPU %",
-                      "icon": "mdi:expansion-card"
-                    },
-                    {
-                      "entity": "sensor.desktop_strix_gpu_vram_used",
-                      "name": "VRAM",
-                      "icon": "mdi:memory"
-                    }
-                  ]
-                }
-              ]
+              "type": "custom:telegraf-device-card",
+              "device": "desktop_strix",
+              "title": "Desktop-STRIX",
+              "icon": "mdi:desktop-tower",
+              "vram_max": 24576,
+              "cpu_throttle_c": 95,
+              "gpu_throttle_c": 93
             },
             {
-              "type": "grid",
-              "cards": [
-                {
-                  "type": "markdown",
-                  "content": "## \ud83d\udcbb Framework 13"
-                },
-                {
-                  "type": "horizontal-stack",
-                  "cards": [
-                    {
-                      "type": "gauge",
-                      "entity": "sensor.framework_13_cpu_usage",
-                      "name": "CPU",
-                      "min": 0,
-                      "max": 100,
-                      "needle": true,
-                      "severity": {
-                        "green": 0,
-                        "yellow": 70,
-                        "red": 90
-                      }
-                    },
-                    {
-                      "type": "gauge",
-                      "entity": "sensor.framework_13_ram_usage",
-                      "name": "RAM",
-                      "min": 0,
-                      "max": 100,
-                      "needle": true,
-                      "severity": {
-                        "green": 0,
-                        "yellow": 75,
-                        "red": 90
-                      }
-                    },
-                    {
-                      "type": "gauge",
-                      "entity": "sensor.framework_13_root_disk_usage",
-                      "name": "Disk",
-                      "min": 0,
-                      "max": 100,
-                      "needle": true,
-                      "severity": {
-                        "green": 0,
-                        "yellow": 75,
-                        "red": 90
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "glance",
-                  "show_name": true,
-                  "show_icon": true,
-                  "show_state": true,
-                  "entities": [
-                    {
-                      "entity": "sensor.framework_13_uptime",
-                      "name": "Uptime",
-                      "icon": "mdi:timer-outline"
-                    },
-                    {
-                      "entity": "sensor.framework_13_cpu_temperature",
-                      "name": "CPU Temp",
-                      "icon": "mdi:thermometer"
-                    },
-                    {
-                      "entity": "sensor.framework_13_battery",
-                      "name": "Battery",
-                      "icon": "mdi:battery"
-                    }
-                  ]
-                }
-              ]
+              "type": "custom:telegraf-device-card",
+              "device": "framework_13",
+              "title": "Framework 13",
+              "icon": "mdi:laptop",
+              "cpu_throttle_c": 100
             },
             {
-              "type": "grid",
-              "cards": [
-                {
-                  "type": "markdown",
-                  "content": "## \ud83c\udf53 HA Pi"
-                },
-                {
-                  "type": "horizontal-stack",
-                  "cards": [
-                    {
-                      "type": "gauge",
-                      "entity": "sensor.ha_pi_cpu_usage",
-                      "name": "CPU",
-                      "min": 0,
-                      "max": 100,
-                      "needle": true,
-                      "severity": {
-                        "green": 0,
-                        "yellow": 70,
-                        "red": 90
-                      }
-                    },
-                    {
-                      "type": "gauge",
-                      "entity": "sensor.ha_pi_ram_usage",
-                      "name": "RAM",
-                      "min": 0,
-                      "max": 100,
-                      "needle": true,
-                      "severity": {
-                        "green": 0,
-                        "yellow": 75,
-                        "red": 90
-                      }
-                    },
-                    {
-                      "type": "gauge",
-                      "entity": "sensor.ha_pi_root_disk_usage",
-                      "name": "Disk",
-                      "min": 0,
-                      "max": 100,
-                      "needle": true,
-                      "severity": {
-                        "green": 0,
-                        "yellow": 75,
-                        "red": 90
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "glance",
-                  "show_name": true,
-                  "show_icon": true,
-                  "show_state": true,
-                  "entities": [
-                    {
-                      "entity": "sensor.ha_pi_uptime",
-                      "name": "Uptime",
-                      "icon": "mdi:timer-outline"
-                    },
-                    {
-                      "entity": "sensor.ha_pi_cpu_temperature",
-                      "name": "CPU Temp",
-                      "icon": "mdi:thermometer"
-                    }
-                  ]
-                }
-              ]
+              "type": "custom:telegraf-device-card",
+              "device": "ha_pi",
+              "title": "HA Pi",
+              "icon": "mdi:raspberry-pi",
+              "cpu_throttle_c": 80
             },
             {
-              "type": "grid",
-              "cards": [
-                {
-                  "type": "markdown",
-                  "content": "## \ud83d\udee1\ufe0f Pi-hole"
-                },
-                {
-                  "type": "horizontal-stack",
-                  "cards": [
-                    {
-                      "type": "gauge",
-                      "entity": "sensor.pihole_cpu_usage",
-                      "name": "CPU",
-                      "min": 0,
-                      "max": 100,
-                      "needle": true,
-                      "severity": {
-                        "green": 0,
-                        "yellow": 70,
-                        "red": 90
-                      }
-                    },
-                    {
-                      "type": "gauge",
-                      "entity": "sensor.pihole_ram_usage",
-                      "name": "RAM",
-                      "min": 0,
-                      "max": 100,
-                      "needle": true,
-                      "severity": {
-                        "green": 0,
-                        "yellow": 75,
-                        "red": 90
-                      }
-                    },
-                    {
-                      "type": "gauge",
-                      "entity": "sensor.pihole_root_disk_usage",
-                      "name": "Disk",
-                      "min": 0,
-                      "max": 100,
-                      "needle": true,
-                      "severity": {
-                        "green": 0,
-                        "yellow": 75,
-                        "red": 90
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "glance",
-                  "show_name": true,
-                  "show_icon": true,
-                  "show_state": true,
-                  "entities": [
-                    {
-                      "entity": "sensor.pihole_uptime",
-                      "name": "Uptime",
-                      "icon": "mdi:timer-outline"
-                    },
-                    {
-                      "entity": "sensor.pihole_cpu_temperature",
-                      "name": "CPU Temp",
-                      "icon": "mdi:thermometer"
-                    }
-                  ]
-                }
-              ]
+              "type": "custom:telegraf-device-card",
+              "device": "pihole",
+              "title": "Pi-hole",
+              "icon": "mdi:shield-check",
+              "cpu_throttle_c": 80
+            },
+            {
+              "type": "custom:telegraf-device-card",
+              "device": "openwrt",
+              "title": "Router",
+              "icon": "mdi:router-network",
+              "cpu_throttle_c": 105
             }
           ],
           "badges": [],
