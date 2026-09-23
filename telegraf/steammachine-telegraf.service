@@ -1,0 +1,13 @@
+[Unit]
+Description=Telegraf (user service, SteamOS - avoids touching the read-only rootfs)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=%h/telegraf/telegraf.env
+ExecStart=%h/telegraf/bin/telegraf --config %h/telegraf/telegraf.conf
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

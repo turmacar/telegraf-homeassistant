@@ -29,6 +29,7 @@ Node-RED previously sat here (MQTT→HA Discovery transform); retired
 | ha-pi | ${MQTT_HOST} | Debian 12 | `telegraf/ha-pi.conf` |
 | pihole | ${PIHOLE_IP} | Debian 12 | `telegraf/pihole.conf` |
 | openwrt | ${ROUTER_IP} | OpenWRT 25.x | `telegraf/openwrt.conf` |
+| SteamMachine | ${STEAMMACHINE_IP} | SteamOS (Steam Machine 2026) | `telegraf/steammachine.conf` |
 
 ## Credentials
 

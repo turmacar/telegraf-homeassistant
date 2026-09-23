@@ -30,6 +30,7 @@ dashboard = {
             device_card("HA Pi",          "mdi:raspberry-pi",   "ha_pi",         cpu_throttle_c=80),
             device_card("Pi-hole",        "mdi:shield-check",   "pihole",        cpu_throttle_c=80),
             device_card("Router",         "mdi:router-network", "openwrt",       cpu_throttle_c=105),
+            device_card("Steam Machine",  "mdi:steam",          "steammachine",  cpu_throttle_c=95, gpu_throttle_c=95),
         ],
         "badges": [],
         "header": {"layout": "responsive", "badges_position": "bottom", "badges_wrap": "wrap"}
