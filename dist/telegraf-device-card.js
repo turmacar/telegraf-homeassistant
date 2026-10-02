@@ -16,6 +16,9 @@
  *   gpu_throttle_c: number | number[] - same as cpu_throttle_c but for GPU temp gauges.
  *     Use an array to give each GPU (by index) its own throttle temp on multi-GPU hosts.
  */
+const CARD_VERSION = "0.1.0";
+console.info(`%c telegraf-device-card %c ${CARD_VERSION} `, "background:#44739e;color:#fff", "background:#ddd;color:#000");
+
 class TelegrafDeviceCard extends HTMLElement {
   constructor() {
     super();
