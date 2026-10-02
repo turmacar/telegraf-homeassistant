@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate Node-RED flow JSON for telegraf → HA MQTT Discovery bridge.
-Run on Desktop-STRIX; scp /tmp/flows.json turmacar@${HA_HOST}:/home/turmacar/HomeAssistant/nodered/flows.json
-then ssh turmacar@${HA_HOST} "docker restart nodered"
+"""Generate Node-RED flow JSON for telegraf -> HA MQTT Discovery bridge.
+Run on a workstation; scp /tmp/flows.json ${HA_USER}@${HA_HOST}:<ha_dir>/nodered/flows.json
+then ssh ${HA_USER}@${HA_HOST} "docker restart nodered"
 """
 import json
 
@@ -153,7 +153,7 @@ for (const item of items) {
         if (isCpuTemp && fields.temp_input != null) pub('cpu_temp', parseFloat(fields.temp_input.toFixed(1)));
     }
     else if (measurement === 'temp') {
-        // Raspberry Pi thermal via [[inputs.temp]] — thermal_zone0; Tower's k10temp Tctl
+        // Raspberry Pi thermal via [[inputs.temp]] - thermal_zone0; Tower's k10temp Tctl
         const tag_sensor = (tags.sensor || '').toLowerCase();
         if ((tag_sensor === '' || tag_sensor.includes('thermal_zone0') || tag_sensor.includes('cpu') || tag_sensor.includes('tctl')) && fields.temp != null) {
             pub('cpu_temp', parseFloat(fields.temp.toFixed(1)));
@@ -185,8 +185,8 @@ return null;
 """
 
 flow = [
-    {"id": TAB, "type": "tab", "label": "System Metrics → HA",
-     "info": "telegraf MQTT → HA MQTT Discovery. Edit hosts[] in fn_discovery to add machines."},
+    {"id": TAB, "type": "tab", "label": "System Metrics -> HA",
+     "info": "telegraf MQTT -> HA MQTT Discovery. Edit hosts[] in fn_discovery to add machines."},
 
     # NOTE: no "credentials" key here on purpose. Node-RED stores mqtt-broker
     # credentials separately from flows.json; set user/password once via the
@@ -222,7 +222,7 @@ flow = [
      "complete": "true", "targetType": "full", "wires": []},
 
     {"id": MQTT_OUT, "type": "mqtt out", "z": TAB,
-     "name": "→ HA MQTT Discovery", "topic": "", "qos": "1", "retain": "",
+     "name": "-> HA MQTT Discovery", "topic": "", "qos": "1", "retain": "",
      "broker": BROKER, "wires": []},
 ]
 

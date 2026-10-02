@@ -1,6 +1,6 @@
 # telegraf-homeassistant
 
-Monitoring stack for home network: Telegraf → InfluxDB/MQTT → Grafana + Home Assistant.
+Monitoring stack for home network: Telegraf -> InfluxDB/MQTT -> Grafana + Home Assistant.
 
 ## Architecture
 
@@ -15,7 +15,7 @@ Monitoring stack for home network: Telegraf → InfluxDB/MQTT → Grafana + Home
             Home Assistant entities
 ```
 
-Node-RED previously sat here (MQTT→HA Discovery transform); retired
+Node-RED previously sat here (MQTT->HA Discovery transform); retired
 2026-08-28 and its `nodered/` flow removed from this repo, replaced by the
 `telegraf_bridge` custom integration.
 
@@ -53,7 +53,7 @@ Or substitute directly in the config files (do not commit real credentials).
 - Add telegraf user: `docker exec mosquitto mosquitto_passwd /mosquitto/config/pwfile telegraf`
 
 ### Node-RED (HA Pi) - decommissioned 2026-08-28
-- Previously ran at `http://${MQTT_HOST}:1880`, doing the MQTT→HA Discovery
+- Previously ran at `http://${MQTT_HOST}:1880`, doing the MQTT->HA Discovery
   transform. Replaced by the `telegraf_bridge` custom integration (sibling
   repo `telegraf-homeassistant-bridge`). `nodered/flows.json` removed from
   this repo; see `archive/TODO_ha-integration.local.md` for migration history.
@@ -81,9 +81,9 @@ No docker gauge for machines without docker; no GPU row for machines without an 
 
 ```bash
 # Copy the card to HA's www directory (served at /local/)
-scp lovelace-cards/telegraf-device-card.js turmacar@homeassistant.lan:/home/turmacar/HomeAssistant/hass-config/www/
+scp lovelace-cards/telegraf-device-card.js ${HA_USER}@${HA_HOST}:<ha_config>/www/
 
-# Then in HA: Settings → Dashboards → ⋮ → Resources → Add resource
+# Then in HA: Settings -> Dashboards -> three-dot menu -> Resources -> Add resource
 #   URL: /local/telegraf-device-card.js   Type: JavaScript module
 ```
 
@@ -110,6 +110,22 @@ icon: mdi:server
 | `uptime` | Stat | Only if entity exists |
 | `docker_containers` | Stat | Only if entity exists |
 | `gpu_vram_used` | Stat | Only if entity exists |
+| `wan_download` / `wan_upload` | Stat | Router WAN rate |
+| `dns_latency` | Stat | Router DNS latency |
+| `wan_{download,upload}_{this_week,this_month,lifetime}` | Stat | Router WAN usage totals |
+
+## Router: WAN Usage & Per-Client Traffic
+
+- **WAN usage** (week / month / lifetime): tracked by `telegraf_bridge` for net
+  metrics tagged `role = "wan"` (see `telegraf/openwrt.conf`), and shown in
+  Grafana's "OpenWRT: Router" dashboard.
+- **Per-client usage** (Grafana only, not sent to Home Assistant): `nlbwmon` on
+  the router (`apk add nlbwmon`) plus `telegraf/scripts/openwrt-nlbw-clients.sh`
+  (deploy to `/etc/telegraf/nlbw-clients.sh`) emits a `lan_client` measurement
+  tagged by hostname (static DHCP name, lease hostname, IP, then MAC).
+  `namedrop = ["lan_client"]` on the MQTT output keeps it out of HA.
+- Regenerate/deploy the dashboard: `python3 scripts/grafana/gen_openwrt_dashboard.py`
+  (see its docstring for the API POST).
 
 ## Per-OS telegraf Install
 
@@ -124,6 +140,9 @@ icon: mdi:server
 - No nano: use `vi`
 - Init script shebang may be missing: check `/etc/init.d/telegraf` starts with `#!/bin/sh /etc/rc.common`
 - Enable: `/etc/init.d/telegraf enable && /etc/init.d/telegraf start`
+- telegraf 1.39 `[[inputs.exec]]` takes argv arrays: `commands = [["/path/to/script"]]`.
+  `command = [...]` fails to parse; dry-run with `telegraf --config ... --test` before restarting.
+- Add `/etc/telegraf/` to `/etc/sysupgrade.conf` so scripts and the env file survive upgrades.
 
 ### Desktop (Ubuntu 25.04)
 - InfluxData repo doesn't have Ubuntu 25.04 - use jammy: `sudo sed -i 's/noble/jammy/' /etc/apt/sources.list.d/influxdata.list`

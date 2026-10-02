@@ -29,8 +29,18 @@ class TelegrafDeviceCard extends HTMLElement {
       "cpu_usage", "ram_usage", "root_disk_usage",
       "cpu_temperature", "gpu_temperature", "gpu_usage", "gpu_vram_used", "gpu_model",
       "battery", "uptime", "docker_containers",
-      "wan_rx_mbps", "wan_tx_mbps", "dns_latency",
+      "wan_download", "wan_upload", "dns_latency",
+      "wan_download_this_week", "wan_upload_this_week", "wan_download_this_month", "wan_upload_this_month",
+      "wan_download_lifetime", "wan_upload_lifetime",
       ...[0, 1, 2, 3].flatMap(i => [`gpu_${i}_usage`, `gpu_${i}_temperature`, `gpu_${i}_vram_used`, `gpu_${i}_model`]),
+    ];
+    this._USAGE_STATS = [
+      { suffix: "wan_download_this_week",  icon: "mdi:download-network", label: "Down (week)" },
+      { suffix: "wan_upload_this_week",    icon: "mdi:upload-network",   label: "Up (week)" },
+      { suffix: "wan_download_this_month", icon: "mdi:download-network", label: "Down (month)" },
+      { suffix: "wan_upload_this_month",   icon: "mdi:upload-network",   label: "Up (month)" },
+      { suffix: "wan_download_lifetime",   icon: "mdi:download-network", label: "Down (lifetime)" },
+      { suffix: "wan_upload_lifetime",     icon: "mdi:upload-network",   label: "Up (lifetime)" },
     ];
   }
 
@@ -138,7 +148,7 @@ class TelegrafDeviceCard extends HTMLElement {
       if (!this._st(usage) && !this._st(temp) && !this._st(vram)) continue;
       const model = this._st(`gpu_${i}_model`)?.state;
       indexed.push({
-        label: model ? `GPU ${i} · ${model}` : `GPU ${i}`,
+        label: model ? `GPU ${i} - ${model}` : `GPU ${i}`,
         defs: [
           { suffix: usage, name: "Usage", severity: { green: 0, yellow: 60, red: 80 } },
           { suffix: temp,  name: "Temp",  ...this._tempThresholds(temp, gpuThrottle(i)) },
@@ -202,8 +212,8 @@ class TelegrafDeviceCard extends HTMLElement {
 
     const uptimeSec = this._uptimeSeconds();
     const docker    = this._num("docker_containers");
-    const hasStats  = uptimeSec !== null || docker !== null ||
-      this._num("wan_rx_mbps") !== null || this._num("wan_tx_mbps") !== null || this._num("dns_latency") !== null;
+    const hasStats  = uptimeSec !== null || docker !== null || this._num("dns_latency") !== null ||
+      ["wan_download", "wan_upload", ...this._USAGE_STATS.map(u => u.suffix)].some(s => this._num(s) !== null);
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -301,9 +311,10 @@ class TelegrafDeviceCard extends HTMLElement {
 
     const uptimeSec = this._uptimeSeconds();
     const docker    = this._num("docker_containers");
-    const wanRx     = this._num("wan_rx_mbps");
-    const wanTx     = this._num("wan_tx_mbps");
+    const wanRx     = this._num("wan_download");
+    const wanTx     = this._num("wan_upload");
     const dnsMs     = this._num("dns_latency");
+    const unit      = (suffix) => this._st(suffix)?.attributes.unit_of_measurement ?? "";
 
     const stat = (icon, label, value) =>
       `<div class="stat">
@@ -315,9 +326,13 @@ class TelegrafDeviceCard extends HTMLElement {
     statsDiv.innerHTML = [
       uptimeSec !== null ? stat("mdi:timer-outline",     "Uptime",     this._formatUptime(uptimeSec)) : "",
       docker    !== null ? stat("mdi:docker",            "Containers", Math.round(docker))             : "",
-      wanRx     !== null ? stat("mdi:download-network",  "Download",   `${wanRx.toFixed(1)} Mb/s`)      : "",
-      wanTx     !== null ? stat("mdi:upload-network",    "Upload",     `${wanTx.toFixed(1)} Mb/s`)      : "",
+      wanRx     !== null ? stat("mdi:download-network",  "Download",   `${wanRx.toFixed(1)} ${unit("wan_download")}`) : "",
+      wanTx     !== null ? stat("mdi:upload-network",    "Upload",     `${wanTx.toFixed(1)} ${unit("wan_upload")}`)   : "",
       dnsMs     !== null ? stat("mdi:dns",                "DNS",        `${Math.round(dnsMs)} ms`)       : "",
+      ...this._USAGE_STATS.map(({ suffix, icon, label }) => {
+        const val = this._num(suffix);
+        return val !== null ? stat(icon, label, `${val.toFixed(1)} ${unit(suffix)}`) : "";
+      }),
     ].filter(Boolean).join("");
   }
 

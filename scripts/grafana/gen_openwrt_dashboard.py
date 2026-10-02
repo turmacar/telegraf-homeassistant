@@ -125,6 +125,27 @@ panels.append(timeseries("WAN Errors && Drops", [
 ], "short", 0, 13)
 )
 
+
+def wan_usage_stat(title, time_from, x, bucket="5m"):
+    """WAN bytes over a calendar-aligned window from eth0's cumulative counters."""
+    def query(field, name):
+        return (f'SELECT sum("d") AS "{name}" FROM (SELECT non_negative_difference(last("{field}")) AS "d" '
+                f'FROM "net" WHERE host = \'{HOST}\' AND interface = \'eth0\' AND $timeFilter '
+                f'GROUP BY time({bucket}) fill(none))')
+    panel = stat(title, query("bytes_recv", "Download"), "decbytes", x, 13, w=4, h=7, decimals=2)
+    panel["targets"].append({**panel["targets"][0], "refId": "B", "query": query("bytes_sent", "Upload")})
+    panel["timeFrom"] = time_from
+    panel["options"]["orientation"] = "auto"
+    return panel
+
+
+panels.append(wan_usage_stat("WAN Usage - This Week", "now/w", 12))
+panels.append(wan_usage_stat("WAN Usage - This Month", "now/M", 16))
+# Lifetime = all retained net data for the router (predates HA's lifetime sensors).
+wan_lifetime = wan_usage_stat("WAN Usage - Lifetime", "20y", 20, bucket="1h")
+wan_lifetime["hideTimeOverride"] = True
+panels.append(wan_lifetime)
+
 panels.append(row("DNS", 20))
 panels.append(timeseries("DNS Query Latency by Resolver", [
     ("dns", f'SELECT mean("query_time_ms") FROM "dns_query" WHERE host = \'{HOST}\' AND $timeFilter GROUP BY time($__interval), "server" fill(null)'),
@@ -143,6 +164,59 @@ panels.append(timeseries("UDP Sockets", [
     ("udp", f'SELECT mean("udp_socket") AS "UDP Sockets" FROM "netstat" WHERE host = \'{HOST}\' AND $timeFilter GROUP BY time($__interval) fill(null)'),
 ], "short", 12, 29)
 )
+
+def client_usage_table(title, time_from, x, y, w=8, h=11, bucket="5m"):
+    """Per-client bytes over a calendar-aligned window. lan_client counters are cumulative
+    per nlbwmon period, so diff per (mac, hostname) before summing per hostname."""
+    def query(field, name):
+        return (f'SELECT sum("d") AS "{name}" FROM (SELECT non_negative_difference(last("{field}")) AS "d" '
+                f'FROM "lan_client" WHERE host = \'{HOST}\' AND $timeFilter GROUP BY time({bucket}), "mac", "hostname" fill(none)) '
+                f'GROUP BY "hostname"')
+    return {
+        "datasource": DS,
+        "fieldConfig": {
+            "defaults": {"unit": "decbytes", "custom": {"cellOptions": {"type": "gauge", "mode": "basic"}}},
+            "overrides": [{"matcher": {"id": "byName", "options": "Device"},
+                           "properties": [{"id": "custom.cellOptions", "value": {"type": "auto"}}]}],
+        },
+        "gridPos": {"h": h, "w": w, "x": x, "y": y},
+        "timeFrom": time_from,
+        "options": {"showHeader": True, "cellHeight": "sm"},
+        "targets": [
+            {"datasource": DS, "dsType": "influxdb", "rawQuery": True, "query": query("rx_bytes", "Download"),
+             "refId": "A", "resultFormat": "table"},
+            {"datasource": DS, "dsType": "influxdb", "rawQuery": True, "query": query("tx_bytes", "Upload"),
+             "refId": "B", "resultFormat": "table"},
+        ],
+        "transformations": [
+            {"id": "merge", "options": {}},
+            {"id": "calculateField", "options": {"mode": "reduceRow", "reduce": {"reducer": "sum"}, "alias": "Total"}},
+            {"id": "organize", "options": {"excludeByName": {"Time": True}, "renameByName": {"hostname": "Device"}}},
+            {"id": "sortBy", "options": {"sort": [{"field": "Total", "desc": True}]}},
+        ],
+        "title": title, "type": "table",
+    }
+
+
+def client_rate_query(field):
+    return (f'SELECT sum("r") FROM (SELECT non_negative_derivative(last("{field}"),1s)*8 AS "r" FROM "lan_client" '
+            f'WHERE host = \'{HOST}\' AND $timeFilter GROUP BY time($__interval), "mac", "hostname" fill(none)) '
+            f'GROUP BY time($__interval), "hostname" fill(none)')
+
+
+# Per-client traffic from nlbwmon (telegraf/scripts/openwrt-nlbw-clients.sh); Influx only, not HA.
+panels.append(row("Clients", 36))
+panels.append(client_usage_table("Clients - This Week", "now/w", 0, 37))
+panels.append(client_usage_table("Clients - This Month", "now/M", 8, 37))
+# "Lifetime" = everything since lan_client collection began (2026-10-02), bounded by bucket retention.
+lifetime = client_usage_table("Clients - Lifetime", "20y", 16, 37, bucket="1h")
+lifetime["hideTimeOverride"] = True
+panels.append(lifetime)
+for i, (title, field) in enumerate((("Client Download Rate", "rx_bytes"), ("Client Upload Rate", "tx_bytes"))):
+    panel = timeseries(title, [("rate", client_rate_query(field))], "bps", 12 * i, 48)
+    panel["targets"][0]["alias"] = "$tag_hostname"
+    panel["interval"] = "1m"
+    panels.append(panel)
 
 dashboard = {
     "uid": DASHBOARD_UID,

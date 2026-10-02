@@ -7,9 +7,9 @@ Requires telegraf-device-card installed as a Lovelace resource:
 
 Run and deploy:
   python3 ha-dashboard/gen_ha_dashboard.py > /tmp/ha_dashboard.json
-  scp /tmp/ha_dashboard.json turmacar@homeassistant.lan:/tmp/
-  ssh turmacar@homeassistant.lan "sudo cp /tmp/ha_dashboard.json \
-    /home/turmacar/HomeAssistant/hass-config/.storage/lovelace.dashboard_raspberrypi"
+  scp /tmp/ha_dashboard.json ${HA_USER}@${HA_HOST}:/tmp/
+  ssh ${HA_USER}@${HA_HOST} "sudo cp /tmp/ha_dashboard.json \
+    <ha_config>/.storage/lovelace.dashboard_raspberrypi"
 """
 import json
 
