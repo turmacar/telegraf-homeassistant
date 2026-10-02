@@ -34,13 +34,15 @@ class TelegrafDeviceCard extends HTMLElement {
       "wan_download_lifetime", "wan_upload_lifetime",
       ...[0, 1, 2, 3].flatMap(i => [`gpu_${i}_usage`, `gpu_${i}_temperature`, `gpu_${i}_vram_used`, `gpu_${i}_model`]),
     ];
-    this._USAGE_STATS = [
-      { suffix: "wan_download_this_week",  icon: "mdi:download-network", label: "Down (week)" },
-      { suffix: "wan_upload_this_week",    icon: "mdi:upload-network",   label: "Up (week)" },
-      { suffix: "wan_download_this_month", icon: "mdi:download-network", label: "Down (month)" },
-      { suffix: "wan_upload_this_month",   icon: "mdi:upload-network",   label: "Up (month)" },
-      { suffix: "wan_download_lifetime",   icon: "mdi:download-network", label: "Down (lifetime)" },
-      { suffix: "wan_upload_lifetime",     icon: "mdi:upload-network",   label: "Up (lifetime)" },
+    this._WAN_SECTIONS = [
+      { key: "download", label: "Download", icon: "mdi:download-network" },
+      { key: "upload",   label: "Upload",   icon: "mdi:upload-network" },
+    ];
+    this._WAN_PERIODS = [
+      { suffix: "",            label: "Now",      icon: "mdi:speedometer" },
+      { suffix: "_this_week",  label: "Week",     icon: "mdi:calendar-week" },
+      { suffix: "_this_month", label: "Month",    icon: "mdi:calendar-month" },
+      { suffix: "_lifetime",   label: "Lifetime", icon: "mdi:infinity" },
     ];
   }
 
@@ -212,8 +214,9 @@ class TelegrafDeviceCard extends HTMLElement {
 
     const uptimeSec = this._uptimeSeconds();
     const docker    = this._num("docker_containers");
-    const hasStats  = uptimeSec !== null || docker !== null || this._num("dns_latency") !== null ||
-      ["wan_download", "wan_upload", ...this._USAGE_STATS.map(u => u.suffix)].some(s => this._num(s) !== null);
+    const hasStats  = uptimeSec !== null || docker !== null || this._num("dns_latency") !== null;
+    const wanSections = this._WAN_SECTIONS.filter(s =>
+      this._WAN_PERIODS.some(p => this._num(`wan_${s.key}${p.suffix}`) !== null));
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -261,7 +264,16 @@ class TelegrafDeviceCard extends HTMLElement {
         .stat ha-icon { --mdc-icon-size: 16px; color: var(--state-icon-color, #44739e); }
         .stat-lbl { font-size: 0.7em;  color: var(--secondary-text-color); }
         .stat-val { font-size: 0.88em; font-weight: 500; color: var(--primary-text-color); }
-        .gpu-label { font-size: 0.78em; font-weight: 500; color: var(--secondary-text-color); margin-bottom: 2px; }
+        .section-label {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 0.78em;
+          font-weight: 500;
+          color: var(--secondary-text-color);
+          margin-bottom: 2px;
+        }
+        .section-label ha-icon { --mdc-icon-size: 14px; color: var(--state-icon-color, #44739e); }
       </style>
       <ha-card>
         <div class="header">
@@ -269,9 +281,10 @@ class TelegrafDeviceCard extends HTMLElement {
           <span>${title}</span>
         </div>
         <div class="gauge-row primary"></div>
-        ${gpuRows.map((row, i) => `<hr class="divider">${row.label ? `<div class="gpu-label">${row.label}</div>` : ""}<div class="gauge-row gpu" data-gpu="${i}"></div>`).join("")}
+        ${gpuRows.map((row, i) => `<hr class="divider">${row.label ? `<div class="section-label">${row.label}</div>` : ""}<div class="gauge-row gpu" data-gpu="${i}"></div>`).join("")}
         ${secondaryDefs.length > 0 ? '<hr class="divider"><div class="gauge-row secondary"></div>' : ""}
-        ${hasStats               ? '<hr class="divider"><div class="stats"></div>'              : ""}
+        ${hasStats               ? '<hr class="divider"><div class="stats general"></div>'      : ""}
+        ${wanSections.map(s => `<hr class="divider"><div class="section-label"><ha-icon icon="${s.icon}"></ha-icon>${s.label}</div><div class="stats wan" data-wan="${s.key}"></div>`).join("")}
       </ha-card>`;
 
     const primaryRow = this.shadowRoot.querySelector(".gauge-row.primary");
@@ -302,20 +315,11 @@ class TelegrafDeviceCard extends HTMLElement {
       }
     }
 
-    if (hasStats) this._renderStats();
+    this._renderStats();
   }
 
   _renderStats() {
-    const statsDiv = this.shadowRoot.querySelector(".stats");
-    if (!statsDiv) return;
-
-    const uptimeSec = this._uptimeSeconds();
-    const docker    = this._num("docker_containers");
-    const wanRx     = this._num("wan_download");
-    const wanTx     = this._num("wan_upload");
-    const dnsMs     = this._num("dns_latency");
-    const unit      = (suffix) => this._st(suffix)?.attributes.unit_of_measurement ?? "";
-
+    const unit = (suffix) => this._st(suffix)?.attributes.unit_of_measurement ?? "";
     const stat = (icon, label, value) =>
       `<div class="stat">
         <ha-icon icon="${icon}"></ha-icon>
@@ -323,17 +327,25 @@ class TelegrafDeviceCard extends HTMLElement {
         <div class="stat-val">${value}</div>
       </div>`;
 
-    statsDiv.innerHTML = [
-      uptimeSec !== null ? stat("mdi:timer-outline",     "Uptime",     this._formatUptime(uptimeSec)) : "",
-      docker    !== null ? stat("mdi:docker",            "Containers", Math.round(docker))             : "",
-      wanRx     !== null ? stat("mdi:download-network",  "Download",   `${wanRx.toFixed(1)} ${unit("wan_download")}`) : "",
-      wanTx     !== null ? stat("mdi:upload-network",    "Upload",     `${wanTx.toFixed(1)} ${unit("wan_upload")}`)   : "",
-      dnsMs     !== null ? stat("mdi:dns",                "DNS",        `${Math.round(dnsMs)} ms`)       : "",
-      ...this._USAGE_STATS.map(({ suffix, icon, label }) => {
-        const val = this._num(suffix);
-        return val !== null ? stat(icon, label, `${val.toFixed(1)} ${unit(suffix)}`) : "";
-      }),
-    ].filter(Boolean).join("");
+    const statsDiv = this.shadowRoot.querySelector(".stats.general");
+    if (statsDiv) {
+      const uptimeSec = this._uptimeSeconds();
+      const docker    = this._num("docker_containers");
+      const dnsMs     = this._num("dns_latency");
+      statsDiv.innerHTML = [
+        uptimeSec !== null ? stat("mdi:timer-outline", "Uptime",     this._formatUptime(uptimeSec)) : "",
+        docker    !== null ? stat("mdi:docker",        "Containers", Math.round(docker))             : "",
+        dnsMs     !== null ? stat("mdi:dns",           "DNS",        `${Math.round(dnsMs)} ms`)       : "",
+      ].filter(Boolean).join("");
+    }
+
+    for (const wanDiv of this.shadowRoot.querySelectorAll(".stats.wan")) {
+      wanDiv.innerHTML = this._WAN_PERIODS.map(({ suffix, label, icon }) => {
+        const entity = `wan_${wanDiv.dataset.wan}${suffix}`;
+        const val = this._num(entity);
+        return val !== null ? stat(icon, label, `${val.toFixed(val < 10 ? 2 : 1)} ${unit(entity)}`) : "";
+      }).filter(Boolean).join("");
+    }
   }
 
   getCardSize() { return 4; }

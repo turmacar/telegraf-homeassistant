@@ -85,6 +85,8 @@ scp lovelace-cards/telegraf-device-card.js ${HA_USER}@${HA_HOST}:<ha_config>/www
 
 # Then in HA: Settings -> Dashboards -> three-dot menu -> Resources -> Add resource
 #   URL: /local/telegraf-device-card.js   Type: JavaScript module
+# After redeploying the card, bump a ?v=N query on that resource URL (e.g. ?v=7);
+# the frontend caches /local/ resources by URL, so a restart alone won't pick it up.
 ```
 
 ### Usage
@@ -110,9 +112,9 @@ icon: mdi:server
 | `uptime` | Stat | Only if entity exists |
 | `docker_containers` | Stat | Only if entity exists |
 | `gpu_vram_used` | Stat | Only if entity exists |
-| `wan_download` / `wan_upload` | Stat | Router WAN rate |
+| `wan_download` / `wan_upload` | Download / Upload sections ("Now") | Router WAN rate |
 | `dns_latency` | Stat | Router DNS latency |
-| `wan_{download,upload}_{this_week,this_month,lifetime}` | Stat | Router WAN usage totals |
+| `wan_{download,upload}_{this_week,this_month,lifetime}` | Download / Upload sections (Week / Month / Lifetime) | Router WAN usage totals |
 
 ## Router: WAN Usage & Per-Client Traffic
 
