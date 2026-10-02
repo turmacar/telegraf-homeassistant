@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generate HA Hardware Status dashboard for Lovelace.
 
-Requires telegraf-device-card installed as a Lovelace resource:
-  cp lovelace-cards/telegraf-device-card.js <ha_config>/www/
+Requires telegraf-device-card installed as a Lovelace resource (via HACS, or manually):
+  cp dist/telegraf-device-card.js <ha_config>/www/
   # Add /local/telegraf-device-card.js as a resource in Lovelace settings
 
 Run and deploy:

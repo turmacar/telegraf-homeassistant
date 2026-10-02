@@ -79,15 +79,29 @@ No docker gauge for machines without docker; no GPU row for machines without an 
 
 ### Install
 
+#### HACS (recommended)
+
+1. HACS -> top-right menu -> **Custom repositories**
+2. Repository: `https://github.com/turmacar/telegraf-homeassistant`, Type: **Dashboard**
+3. Download "Telegraf Device Card", then reload the browser when prompted
+
+HACS registers the Lovelace resource and versions its URL on every update, so
+no manual cache busting is needed. The card itself lives in `dist/`.
+
+#### Manual
+
 ```bash
 # Copy the card to HA's www directory (served at /local/)
-scp lovelace-cards/telegraf-device-card.js ${HA_USER}@${HA_HOST}:<ha_config>/www/
+scp dist/telegraf-device-card.js ${HA_USER}@${HA_HOST}:<ha_config>/www/
 
 # Then in HA: Settings -> Dashboards -> three-dot menu -> Resources -> Add resource
 #   URL: /local/telegraf-device-card.js   Type: JavaScript module
 # After redeploying the card, bump a ?v=N query on that resource URL (e.g. ?v=7);
 # the frontend caches /local/ resources by URL, so a restart alone won't pick it up.
 ```
+
+Don't keep both installs: remove the manual `/local/` resource and `www/` file
+before switching to HACS (the card can only be registered once).
 
 ### Usage
 
